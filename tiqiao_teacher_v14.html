@@ -1,0 +1,296 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>体桥教师端 v14</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet"/>
+<style>
+:root{--accent:#1e88e5;--bg:#f5f7fb;--card:#fff;}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial;}
+::-webkit-scrollbar{display:none}
+.card{background:var(--card);border-radius:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.nav-active{color:var(--accent);}
+.chip{padding:.25rem .75rem;border-radius:9999px;border:1px solid #e0e0e0;font-size:.75rem;margin-right:.5rem;white-space:nowrap;cursor:pointer;}
+.chip-active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.glass{backdrop-filter:blur(20px);background:rgba(255,255,255,.85);}
+.modal{background:rgba(0,0,0,.55);}
+.slide{transition:transform .3s;}
+@media(min-width:430px){#app{width:430px;margin:0 auto;border-radius:18px;box-shadow:0 0 18px rgba(0,0,0,.15);overflow:hidden}}
+</style>
+</head>
+<body>
+<div id="app" class="w-full min-h-screen flex flex-col relative">
+
+<!-- Overlays -->
+<div id="searchOverlay" class="fixed inset-0 modal hidden z-40 flex items-start justify-center pt-24">
+  <div class="card w-11/12 max-w-md p-4">
+    <div class="flex items-center gap-2 border-b pb-2">
+      <span class="material-symbols-rounded text-gray-500">search</span>
+      <input id="searchInput" placeholder="搜索文章 / 帖子 / 资源" class="flex-1 outline-none">
+      <button onclick="toggleSearch()" class="material-symbols-rounded text-gray-400">close</button>
+    </div>
+    <ul id="suggestList" class="mt-3 text-sm text-gray-600 space-y-2 hidden"></ul>
+  </div>
+</div>
+
+<div id="notifSheet" class="fixed right-3 top-14 card hidden z-30 w-64">
+  <ul class="divide-y divide-gray-100 text-sm">
+    <li class="px-4 py-3">系统：发布新会议日程</li>
+    <li class="px-4 py-3">李华 评论了你</li>
+    <li class="px-4 py-3 text-center text-[var(--accent)] cursor-pointer">查看全部</li>
+  </ul>
+</div>
+
+<div id="postSlide" class="fixed right-0 top-0 h-full w-80 bg-white slide translate-x-full z-40 shadow-lg">
+  <div class="flex items-center justify-between p-4 border-b">
+    <h3 class="font-semibold">发布帖子</h3>
+    <button onclick="togglePost()" class="material-symbols-rounded text-gray-600">close</button>
+  </div>
+  <form class="p-4 space-y-3" onsubmit="event.preventDefault();publishPost()">
+    <input id="postTitle" class="w-full border p-2 rounded" placeholder="标题 20 字以内">
+    <textarea id="postBody" class="w-full border p-2 rounded h-24" placeholder="正文..."></textarea>
+    <select id="postTag" class="w-full border p-2 rounded">
+      <option value="科研方法">科研方法</option>
+      <option value="经验">经验</option>
+      <option value="活动">活动</option>
+    </select>
+    <button class="w-full bg-[var(--accent)] text-white py-2 rounded">发布</button>
+  </form>
+</div>
+
+<div id="resourceModal" class="fixed inset-0 modal hidden z-40 flex items-center justify-center">
+  <div class="card w-11/12 max-w-md p-5">
+    <h3 id="resTitle" class="font-semibold text-lg"></h3>
+    <p id="resMeta" class="text-sm text-gray-500 mt-1"></p>
+    <p class="text-sm mt-4">资源详情仅供演示，可进行在线阅读或下载。</p>
+    <button class="mt-6 w-full border py-2 rounded text-[var(--accent)]" onclick="toggleRes()">关闭</button>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="glass flex items-center h-14 px-4 sticky top-0 z-20 border-b border-gray-100">
+  <h1 class="text-lg font-semibold">体桥教师端</h1>
+  <div class="ml-auto flex gap-4 text-[22px]">
+    <button onclick="toggleSearch()" class="text-gray-600"><span class="material-symbols-rounded">search</span></button>
+    <button onclick="toggleNotif()" class="text-gray-600 relative">
+      <span class="material-symbols-rounded">notifications</span>
+      <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+    </button>
+  </div>
+</header>
+
+<main class="flex-1 overflow-y-auto bg-[var(--bg)]">
+
+<!-- Home -->
+<section id="homePage" class="page">
+  <a href="#" class="block mx-4 mt-4 card overflow-hidden relative">
+    <img src="https://images.unsplash.com/photo-1600369673831-6d502d279f90?auto=format&fit=crop&w=1200&q=80" class="w-full h-52 object-cover">
+    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent"></div>
+    <div class="absolute bottom-4 left-4 text-white">
+      <h3 class="text-lg font-semibold">世界运动恢复技术研讨会</h3>
+      <p class="text-xs text-gray-300">线上直播 • 6 月 30 日</p>
+    </div>
+  </a>
+
+  <div class="flex overflow-x-auto px-4 mt-4">
+    <div class="chip chip-active" onclick="filterFeed(this,'全部')">全部</div>
+    <div class="chip" onclick="filterFeed(this,'科研方法')">科研方法</div>
+    <div class="chip" onclick="filterFeed(this,'设备评测')">设备评测</div>
+    <div class="chip" onclick="filterFeed(this,'学术会议')">学术会议</div>
+  </div>
+
+  <div id="feedList" class="grid grid-cols-1 gap-4 p-4">
+    <a href="#" class="card overflow-hidden" data-tag="科研方法">
+      <img src="https://images.unsplash.com/photo-1508675801627-066ac4346a29?auto=format&fit=crop&w=800&q=60" class="w-full h-44 object-cover rounded-t-2xl">
+      <div class="p-4">
+        <h4 class="font-medium leading-snug line-clamp-2">疲劳监测算法：清华 AI 实验室最新论文精读</h4>
+        <p class="text-xs text-gray-500 mt-1">科研方法 • 2h 前</p>
+      </div>
+    </a>
+    <a href="#" class="card overflow-hidden" data-tag="设备评测">
+      <img src="https://images.unsplash.com/photo-1606731911827-44eecabb5ec9?auto=format&fit=crop&w=800&q=60" class="w-full h-44 object-cover rounded-t-2xl">
+      <div class="p-4">
+        <h4 class="font-medium leading-snug line-clamp-2">可穿戴 EMG 设备对比评测（附数据）</h4>
+        <p class="text-xs text-gray-500 mt-1">设备评测 • 1h 前</p>
+      </div>
+    </a>
+    <a href="#" class="card overflow-hidden" data-tag="学术会议">
+      <img src="https://images.unsplash.com/photo-1517445312883-6d8b53ca45f4?auto=format&fit=crop&w=800&q=60" class="w-full h-44 object-cover rounded-t-2xl">
+      <div class="p-4">
+        <h4 class="font-medium leading-snug line-clamp-2">ICPE 2025 运动表现国际会议征稿</h4>
+        <p class="text-xs text-gray-500 mt-1">学术会议 • 30m 前</p>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- Forum -->
+<section id="forumPage" class="page hidden">
+  <div class="flex items-center justify-between px-4 mt-4">
+    <h2 class="font-semibold text-lg">论坛</h2>
+    <button onclick="togglePost()" class="flex items-center gap-1 text-sm text-[var(--accent)]">
+      <span class="material-symbols-rounded text-[22px]">edit</span>发帖
+    </button>
+  </div>
+  <div class="flex overflow-x-auto px-4 mt-3">
+    <div class="chip chip-active" onclick="filterForum(this,'全部')">全部</div>
+    <div class="chip" onclick="filterForum(this,'科研方法')">科研方法</div>
+    <div class="chip" onclick="filterForum(this,'活动')">活动</div>
+    <div class="chip" onclick="filterForum(this,'经验')">经验</div>
+  </div>
+  <div id="forumList" class="space-y-4 p-4">
+    <article class="card p-4" data-tag="科研方法">
+      <header class="flex items-center gap-2">
+        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=64&q=60" class="w-8 h-8 rounded-full">
+        <div><p class="text-sm font-medium">李华</p><p class="text-xs text-gray-500">北体大 • 10 min 前</p></div>
+      </header>
+      <p class="text-sm mt-3">求推荐 HRV Python 库，最好带 GUI。</p>
+      <footer class="flex gap-6 text-xs text-gray-500 mt-3">
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">thumb_up</span>12</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">chat_bubble</span>3</span>
+      </footer>
+    </article>
+    <article class="card p-4" data-tag="活动">
+      <header class="flex items-center gap-2">
+        <img src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=64&q=60" class="w-8 h-8 rounded-full">
+        <div><p class="text-sm font-medium">王心如</p><p class="text-xs text-gray-500">华东体院 • 1h 前</p></div>
+      </header>
+      <p class="text-sm mt-3">下周有无同行去南京参加康复论坛？组个拼车。</p>
+      <footer class="flex gap-6 text-xs text-gray-500 mt-3">
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">thumb_up</span>5</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">chat_bubble</span>1</span>
+      </footer>
+    </article>
+  </div>
+</section>
+
+<!-- Resource -->
+<section id="resourcePage" class="page hidden">
+  <h2 class="font-semibold text-lg px-4 mt-4">资源库</h2>
+  <div class="flex mx-4 mt-4 bg-[var(--bg)] p-1 rounded-full">
+    <button id="seg-article" class="flex-1 py-1.5 rounded-full text-sm font-medium seg-active text-center bg-[var(--accent)] text-white"
+      onclick="switchResSeg('article')">文章</button>
+    <button id="seg-data" class="flex-1 py-1.5 rounded-full text-sm font-medium text-center text-gray-600"
+      onclick="switchResSeg('data')">数据</button>
+    <button id="seg-conf" class="flex-1 py-1.5 rounded-full text-sm font-medium text-center text-gray-600"
+      onclick="switchResSeg('conf')">会议</button>
+  </div>
+  <div id="resList" class="grid grid-cols-1 gap-4 p-4"></div>
+</section>
+
+<!-- Profile -->
+<section id="profilePage" class="page hidden">
+  <header class="h-28" style="background:linear-gradient(135deg,#1e88e5 0%,#42a5f5 100%)"></header>
+  <div class="relative -mt-12 px-4">
+    <img src="https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=128&q=60" class="w-24 h-24 rounded-full border-4 border-white">
+    <h3 class="mt-2 font-semibold text-lg">张路明</h3>
+    <p class="text-sm text-gray-200">浙江大学 • 运动人体科学</p>
+  </div>
+  <ul class="divide-y divide-gray-100 mt-4 bg-[var(--card)]">
+    <li class="px-4 py-3 flex justify-between"><span>我的收藏</span><span class="material-symbols-rounded">chevron_right</span></li>
+    <li class="px-4 py-3 flex justify-between"><span>设置</span><span class="material-symbols-rounded">chevron_right</span></li>
+  </ul>
+</section>
+
+</main>
+
+<nav class="glass fixed bottom-0 left-0 w-full border-t border-gray-200 flex h-14">
+  <button class="nav-btn flex-1 flex flex-col items-center justify-center nav-active" data-target="homePage" onclick="switchPage(this)">
+    <span class="material-symbols-rounded text-[22px]">home</span><span class="text-[11px]">首页</span>
+  </button>
+  <button class="nav-btn flex-1 flex flex-col items-center justify-center" data-target="forumPage" onclick="switchPage(this)">
+    <span class="material-symbols-rounded text-[22px]">forum</span><span class="text-[11px]">论坛</span>
+  </button>
+  <button class="nav-btn flex-1 flex flex-col items-center justify-center" data-target="resourcePage" onclick="switchPage(this)">
+    <span class="material-symbols-rounded text-[22px]">menu_book</span><span class="text-[11px]">资源</span>
+  </button>
+  <button class="nav-btn flex-1 flex flex-col items-center justify-center" data-target="profilePage" onclick="switchPage(this)">
+    <span class="material-symbols-rounded text-[22px]">person</span><span class="text-[11px]">我的</span>
+  </button>
+</nav>
+
+<script>
+// page switch
+function switchPage(btn){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
+  btn.classList.add('nav-active');
+  document.querySelectorAll('main .page').forEach(p=>p.classList.add('hidden'));
+  document.getElementById(btn.dataset.target).classList.remove('hidden');
+}
+// search overlay
+function toggleSearch(){document.getElementById('searchOverlay').classList.toggle('hidden');}
+// notification
+function toggleNotif(){document.getElementById('notifSheet').classList.toggle('hidden');}
+// chips
+function filterFeed(el,tag){
+  document.querySelectorAll('#homePage .chip').forEach(c=>c.classList.remove('chip-active'));
+  el.classList.add('chip-active');
+  document.querySelectorAll('#feedList a').forEach(card=>{
+    card.classList.toggle('hidden',tag!=='全部' && card.dataset.tag!==tag);
+  });
+}
+function filterForum(el,tag){
+  document.querySelectorAll('#forumPage .chip').forEach(c=>c.classList.remove('chip-active'));
+  el.classList.add('chip-active');
+  document.querySelectorAll('#forumList article').forEach(post=>{
+    post.classList.toggle('hidden',tag!=='全部' && post.dataset.tag!==tag);
+  });
+}
+// post
+function togglePost(){const s=document.getElementById('postSlide');s.style.transform=s.style.transform?'':'translateX(0)';}
+function publishPost(){
+  const title=document.getElementById('postTitle').value.trim();
+  const body=document.getElementById('postBody').value.trim();
+  const tag=document.getElementById('postTag').value;
+  if(!title||!body){alert('请填写完整');return;}
+  const html=`<article class="card p-4" data-tag="${tag}">
+      <header class="flex items-center gap-2">
+        <img src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=64&q=60" class="w-8 h-8 rounded-full">
+        <div><p class="text-sm font-medium">我</p><p class="text-xs text-gray-500">刚刚</p></div>
+      </header>
+      <p class="text-sm mt-3">${body}</p>
+      <footer class="flex gap-6 text-xs text-gray-500 mt-3">
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">thumb_up</span>0</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-base">chat_bubble</span>0</span>
+      </footer>
+    </article>`;
+  document.getElementById('forumList').insertAdjacentHTML('afterbegin',html);
+  togglePost();
+}
+// resource seg
+const resData={
+  article:[
+    {t:'运动康复指南 2025',meta:'PDF 3.2 MB'},
+    {t:'高校运动心理综述',meta:'PDF 1.8 MB'}
+  ],
+  data:[
+    {t:'高校运动数据集',meta:'CSV/JSON • 10 k 条'},
+    {t:'步态分析原始视频',meta:'MP4 • 300 MB'}
+  ],
+  conf:[
+    {t:'ICPE 2025 国际会议',meta:'截稿 8/1'},
+    {t:'IACSS 运动社会学研讨',meta:'截稿 7/15'}
+  ]
+};
+function switchResSeg(seg){
+  document.querySelectorAll('#resourcePage .seg-active').forEach(b=>{b.classList.remove('seg-active','bg-[var(--accent)]','text-white');b.classList.add('text-gray-600')});
+  document.getElementById('seg-'+seg).classList.add('seg-active','bg-[var(--accent)]','text-white');
+  let list=document.getElementById('resList');list.innerHTML='';
+  resData[seg].forEach(r=>{
+    list.insertAdjacentHTML('beforeend',`<div onclick="openRes('${r.t}','${r.meta}')" class="card p-4 flex items-center gap-3 cursor-pointer">
+      <span class="material-symbols-rounded text-[var(--accent)] text-3xl">${seg==='article'?'description':seg==='data'?'database':'event'}</span>
+      <div><p class="font-medium">${r.t}</p><p class="text-xs text-gray-500">${r.meta}</p></div>
+    </div>`);
+  });
+}
+switchResSeg('article');
+// res modal
+function openRes(t,m){document.getElementById('resTitle').textContent=t;document.getElementById('resMeta').textContent=m;toggleRes();}
+function toggleRes(){document.getElementById('resourceModal').classList.toggle('hidden');}
+</script>
+</div>
+</body>
+</html>
